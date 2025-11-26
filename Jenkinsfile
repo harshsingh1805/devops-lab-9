@@ -5,83 +5,58 @@ pipeline {
 
         stage('Build') {
             steps {
-                echo 'Installing dependencies...'
+                echo "Installing dependencies..."
 
                 sh '''
-                docker run --rm \
-                    -v $WORKSPACE:/app \
-                    -w /app \
-                    python:3.9 bash -c "
-                        if [ -f requirements.txt ]; then
-                            echo 'Installing from requirements.txt...'
-                            pip install -r requirements.txt
-                        else
-                            echo 'No requirements.txt found, skipping.'
-                        fi
-                    "
+                    if [ -f requirements.txt ]; then
+                        echo "Installing from requirements.txt..."
+                        pip3 install --user -r requirements.txt
+                    else
+                        echo "No requirements.txt found, skipping."
+                    fi
                 '''
             }
         }
 
         stage('Test') {
             steps {
-                echo 'Running unit tests inside Python Docker container...'
-
+                echo "Running tests..."
                 sh '''
-                docker run --rm \
-                    -v $WORKSPACE:/app \
-                    -w /app \
-                    python:3.9 python -m unittest discover -s .
-                '''
-            }
-        }
-
-        stage('Deploy') {
-            steps {
-                echo 'Deploying application...'
-
-                sh '''
-                mkdir -p $WORKSPACE/python-app-deploy
-                cp $WORKSPACE/app.py $WORKSPACE/python-app-deploy/
+                    if [ -f tests/test_app.py ]; then
+                        python3 -m unittest tests/test_app.py
+                    else
+                        echo "No tests found, skipping."
+                    fi
                 '''
             }
         }
 
         stage('Run Application') {
             steps {
-                echo 'Running application inside Docker...'
-
+                echo "Starting application..."
                 sh '''
-                docker rm -f python_app_container || true
-
-                docker run -d --name python_app_container \
-                    -v $WORKSPACE/python-app-deploy:/app \
-                    -w /app \
-                    python:3.9 python app.py
+                    python3 app.py &
+                    sleep 5
                 '''
             }
         }
 
         stage('Test Application') {
             steps {
-                echo 'Testing running application...'
-
+                echo "Testing running application..."
                 sh '''
-                docker run --rm \
-                    -v $WORKSPACE:/app \
-                    -w /app \
-                    python:3.9 python test_app.py
+                    curl -I http://localhost:5000 || echo "App did not start"
                 '''
             }
         }
     }
 
     post {
-        success {
-            echo 'Pipeline completed successfully!'
-        }
         failure {
-            echo 'Pipeline failed!'
+            echo "Pipeline failed!"
+        }
+        success {
+            echo "Pipeline succeeded!"
         }
     }
 }

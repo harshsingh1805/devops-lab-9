@@ -1,62 +1,42 @@
 pipeline {
-    agent {
-        docker {
-            image 'python:3.9'
-            args '-u'    // keeps output unbuffered
-        }
-    }
+    agent any
 
     stages {
-
         stage('Build') {
             steps {
-                echo 'Installing dependencies...'
-                
-                // Install requirements if file exists
-                sh '''
-                if [ -f requirements.txt ]; then
-                    pip install -r requirements.txt
-                else
-                    echo "No requirements.txt found, skipping pip install."
-                fi
-                '''
+                echo 'Creating virtual environment and installing dependencies...'
             }
         }
-
         stage('Test') {
             steps {
-                echo 'Running unit tests...'
-                sh 'python -m unittest discover -s .'
+                echo 'Running tests...'
+                sh 'python3 -m unittest discover -s .'
             }
         }
-
         stage('Deploy') {
             steps {
                 echo 'Deploying application...'
-
                 sh '''
                 mkdir -p ${WORKSPACE}/python-app-deploy
                 cp ${WORKSPACE}/app.py ${WORKSPACE}/python-app-deploy/
                 '''
             }
         }
-
         stage('Run Application') {
             steps {
-                echo 'Starting application...'
-
+                echo 'Running application...'
                 sh '''
-                nohup python ${WORKSPACE}/python-app-deploy/app.py > ${WORKSPACE}/python-app-deploy/app.log 2>&1 &
+                nohup python3 ${WORKSPACE}/python-app-deploy/app.py > ${WORKSPACE}/python-app-deploy/app.log 2>&1 &
                 echo $! > ${WORKSPACE}/python-app-deploy/app.pid
                 '''
             }
         }
-
         stage('Test Application') {
             steps {
-                echo 'Testing running application...'
-
-                sh 'python ${WORKSPACE}/test_app.py'
+                echo 'Testing application...'
+                sh '''
+                python3 ${WORKSPACE}/test_app.py
+                '''
             }
         }
     }
@@ -66,7 +46,7 @@ pipeline {
             echo 'Pipeline completed successfully!'
         }
         failure {
-            echo 'Pipeline failed. Check logs for details.'
+            echo 'Pipeline failed. Check the logs for more details.'
         }
     }
 }
